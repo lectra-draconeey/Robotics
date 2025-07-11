@@ -1,5 +1,14 @@
 #include <AFMotor.h>
+#include <Servo.h>
 #include <Arduino.h>
+
+Servo clampServo;
+
+const int SERVO_PIN = 46; //the only working pin that is not covered by motor shield ;-;
+
+int clampAngle = 0; //start unclamped
+
+static bool clamped = false;
 
 AF_DCMotor rightMotorback(1);
 AF_DCMotor rightMotorfront(2);
@@ -14,22 +23,28 @@ byte bufferIndex = 0;
 
 void setup() {
   Serial.begin(115200);
+  clampServo.attach(SERVO_PIN);
   Serial.println("Robot activating...");
   delay(500);
   Serial.println("Robot ready!");
+  clampAngle = 180;
 }
 
 void loop() {
   if (Serial.available()) {
-    String input = Serial.readStringUntil('\n'); //string parse seems fast enough to not warrant a buffer method
-    int commaIndex = input.indexOf(',');
-    if (commaIndex > 0) {
-      int leftSpeed = input.substring(0, commaIndex).toInt();
-      int rightSpeed = input.substring(commaIndex + 1).toInt();
-
+    // Expecting args like: "120,80,50"
+    String input = Serial.readStringUntil('\n');
+    int commaIndex1 = input.indexOf(',');
+    int commaIndex2 = input.indexOf(',', commaIndex1 + 1);
+    if (commaIndex1 > 0) {
+      int leftSpeed = input.substring(0, commaIndex1).toInt();
+      int rightSpeed = input.substring(commaIndex1 + 1, commaIndex2).toInt();
+      int clampAngle = input.substring(commaIndex2+1).toInt();
+      
       Serial.print("Left wheel speed: "); Serial.print(leftSpeed); Serial.print(" | Right wheel speed: "); Serial.println(rightSpeed);
 
       move(leftSpeed, rightSpeed);
+      if (clampAngle) clampServo.write(clampAngle); else clampServo.write(0);
     }
   }    
 }
@@ -48,7 +63,7 @@ void move(int leftSpeed, int rightSpeed) {
 
 /*
 void parseCommand(char* cmd) {
-  // Expecting: "120,80"
+  // Expecting args like: "120,80"
   int commaIndex = -1;
   for (byte i = 0; i < BUFFER_SIZE; i++) {
     if (cmd[i] == ',') {
@@ -67,6 +82,6 @@ void parseCommand(char* cmd) {
 
     //still using tank style turn
   }
-}      
+}   
 
 */

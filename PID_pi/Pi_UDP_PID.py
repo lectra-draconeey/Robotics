@@ -44,11 +44,11 @@ class PiD:
 ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.0001) 
 
 # === PID setup ===
-heading_pid = PiD(Kp=0.01, Ki=0.0, Kd=0.002, setpoint=0)  # Tuning required
-speed_pid = PiD(Kp=1.5, Ki=0.1, Kd=0.2, setpoint= 0.85*max_height)  # Tuning required
+heading_pid = PiD(Kp=0.5, Ki=0.0005, Kd=0.002, setpoint=0)  # Tuning required
+speed_pid = PiD(Kp=15, Ki=0.1, Kd=0.2, setpoint= 0)  # Tuning required
 
 # === Robot parameters ===
-base_speed = 230 #normal drive  
+base_speed = 150 #normal drive  
 max_turn = 120   
 
 last_time = time.time()
@@ -58,6 +58,7 @@ while True:
         data, addr = sock.recvfrom(1024)
         message = data.decode().strip()
         offset_str, width_str, height_str = message.split(',')
+        #int
         offset = int(offset_str) # box offset from center already calulated 
         box_width = int(width_str)
         box_height = int(height_str)
@@ -70,7 +71,7 @@ while True:
         # === Get error ===
         # Get camera input here: ask Hammer
         heading_error = offset #<-- replaced with whatever calculated above (box offset)
-        speed_error =  speed_pid.setpoint - box_height #<-- replace with whatever calculated from ablove (box size)
+        speed_error =  0.85*max_height - box_height #<-- replace with whatever calculated from ablove (box size)
 
         # === Time loop update ===
         current_time = time.time()
@@ -86,8 +87,12 @@ while True:
         speed_correction = max(-base_speed, min(base_speed, speed_correction))
 
         # === Compute motor speeds ===
-        left_speed = speed_correction - turn_correction
-        right_speed = speed_correction + turn_correction
+        #only testing the turn correction for now
+        left_speed = base_speed + turn_correction
+        right_speed = base_speed - turn_correction
+
+        #right_speed = base_speed + speed_correction - turn_correction
+        #left_speed = base_speed + speed_correction + turn_correction
 
         # Ensure speeds are within bounds
         left_speed = max(0, min(255, left_speed))
@@ -96,10 +101,8 @@ while True:
         print(f"Left: {left_speed:.1f} Right: {right_speed:.1f}")
 
         # === Send to Arduino ===
-        clamp_flag = 1 if box_height > 0.85 * max_height else 0
-        command = f"{int(left_speed)},{int(right_speed)},{clamp_flag}\n"
+        command = f"{int(left_speed)},{int(right_speed)}\n"
         ser.write(command.encode('utf-8'))
-
 
         time.sleep(0.05) 
 
