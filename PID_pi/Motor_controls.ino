@@ -6,7 +6,7 @@ Servo clampServo;
 
 const int SERVO_PIN = 46; //the only working pin that is not covered by motor shield ;-;
 
-int clampAngle = 0; //start unclamped
+int clampAngle = 180; //start unclamped
 
 static bool clamped = false;
 
@@ -39,12 +39,31 @@ void loop() {
     if (commaIndex1 > 0) {
       int leftSpeed = input.substring(0, commaIndex1).toInt();
       int rightSpeed = input.substring(commaIndex1 + 1, commaIndex2).toInt();
-      int clampAngle = input.substring(commaIndex2+1).toInt();
+      int clampFlag = input.substring(commaIndex2+1).toInt();
       
-      Serial.print("Left wheel speed: "); Serial.print(leftSpeed); Serial.print(" | Right wheel speed: "); Serial.println(rightSpeed);
+      Serial.print("Left wheel speed: "); Serial.print(leftSpeed); Serial.print(" | Right wheel speed: "); Serial.print(rightSpeed); Serial.print(" | Clamp flag: "); Serial.println(clampFlag);
+
+      leftSpeed = constrain(leftSpeed, 0, 255);
+      rightSpeed = constrain(rightSpeed, 0, 255);
+
+      if (clampFlag == 1) {
+        if (!clamped) {
+          clampServo.write(0); // Clamping
+          clampAngle = 0;
+          clamped = true;
+          Serial.println("Clamping activated.");
+        }
+      } else {
+        if (clamped) {
+          clampServo.write(180); // Unclamping
+          clampAngle = 180;
+          clamped = false;
+          Serial.println("Clamping deactivated.");
+        }
+      }
 
       move(leftSpeed, rightSpeed);
-      if (clampAngle) clampServo.write(clampAngle); else clampServo.write(0);
+      
     }
   }    
 }

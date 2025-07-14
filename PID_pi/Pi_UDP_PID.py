@@ -45,7 +45,7 @@ ser = serial.Serial('/dev/ttyACM0', 115200, timeout=0.0001)
 
 # === PID setup ===
 heading_pid = PiD(Kp=0.5, Ki=0.0005, Kd=0.002, setpoint=0)  # Tuning required
-speed_pid = PiD(Kp=15, Ki=0.1, Kd=0.2, setpoint= 0)  # Tuning required
+speed_pid = PiD(Kp=0.1, Ki=0.001, Kd=0.002, setpoint= 0)  # Tuning required
 
 # === Robot parameters ===
 base_speed = 150 #normal drive  
@@ -71,7 +71,10 @@ while True:
         # === Get error ===
         # Get camera input here: ask Hammer
         heading_error = offset #<-- replaced with whatever calculated above (box offset)
-        speed_error =  0.85*max_height - box_height #<-- replace with whatever calculated from ablove (box size)
+        speed_error =  0.55*max_height - box_height #<-- replace with whatever calculated from ablove (box size)
+
+        clamp_flag = 0
+
 
         # === Time loop update ===
         current_time = time.time()
@@ -88,20 +91,27 @@ while True:
 
         # === Compute motor speeds ===
         #only testing the turn correction for now
-        left_speed = base_speed + turn_correction
-        right_speed = base_speed - turn_correction
+        #left_speed = base_speed + turn_correction
+        #right_speed = base_speed - turn_correction
 
-        #right_speed = base_speed + speed_correction - turn_correction
-        #left_speed = base_speed + speed_correction + turn_correction
+        right_speed = base_speed + speed_correction - turn_correction
+        left_speed = base_speed + speed_correction + turn_correction
 
         # Ensure speeds are within bounds
         left_speed = max(0, min(255, left_speed))
         right_speed = max(0, min(255, right_speed))
 
+
         print(f"Left: {left_speed:.1f} Right: {right_speed:.1f}")
 
+        if box_height > 0.55 * max_height:
+            print("Cat detected, stopping motors. Booting clamp.")
+            left_speed = 0
+            right_speed = 0
+            clamp_flag = 1
+
         # === Send to Arduino ===
-        command = f"{int(left_speed)},{int(right_speed)}\n"
+        command = f"{int(left_speed)},{int(right_speed)},{int(clamp_flag)}\n"
         ser.write(command.encode('utf-8'))
 
         time.sleep(0.05) 
